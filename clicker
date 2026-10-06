@@ -1,0 +1,148 @@
+
+import asyncio
+import math
+
+import flet as ft
+
+
+def main(page: ft.Page):
+    page.title = "Кликер"
+    page.window.width = 600
+    page.window.height = 800
+    page.padding = 24
+    page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+
+    state = {
+        "points": 0,
+        "Power": 1,
+        "per_second": 0,
+        "mouse_price": 15,
+        "golden_price": 75,
+        "auto_price": 100,
+    }
+
+    points_text = ft.Text("Очки: 0", size=36, weight=ft.FontWeight.BOLD)
+    power_text = ft.Text("Сила клика: 1", size=18)
+    auto_text = ft.Text("Автокликер: 0 очков/сек", size=18)
+
+    def refresh():
+        points_text.value = f"Очки: {state['points']}"
+        power_text.value = f"Сила клика: {state['Power']}"
+        auto_text.value = f"Автокликер: {state['per_second']} очков/сек"
+
+        # Обновляем текст цены на кнопках
+        mouse_button.content = f"Купить за {state['mouse_price']}"
+        golden_button.content = f"Купить за {state['golden_price']}"
+        auto_button.content = f"Купить за {state['auto_price']}"
+
+        # Кнопка активна, только если хватает очков
+        mouse_button.disabled = state["points"] < state["mouse_price"]
+        golden_button.disabled = state["points"] < state["golden_price"]
+        auto_button.disabled = state["points"] < state["auto_price"]
+
+        page.update()
+
+    def click(e):
+        state["points"] += state["Power"]
+        refresh()
+
+    def buy_m(e):
+        state["points"] -= state["mouse_price"]
+        state["Power"] += 1
+        state["mouse_price"] = math.ceil(state["mouse_price"] * 1.5)
+        refresh()
+
+    def buy_g(e):
+        state["points"] -= state["golden_price"]
+        state["Power"] += 5
+        state["golden_price"] = math.ceil(state["golden_price"] * 1.5)
+        refresh()
+
+    def buy_a(e):
+        state["points"] -= state["auto_price"]
+        state["per_second"] += 1
+        state["auto_price"] = math.ceil(state["auto_price"] * 1.5)
+        refresh()
+
+    # Фоновая задача автокликера: раз в секунду добавляет очки
+    async def autoclicker():
+        while True:
+            await asyncio.sleep(1)
+            if state["per_second"] > 0:
+                state["points"] += state["per_second"]
+                refresh()
+
+    click_button = ft.Container(
+        width=150,
+        height=150,
+        border_radius=100,
+        bgcolor=ft.Colors.BLUE_900,
+        alignment=ft.Alignment.CENTER,
+        on_click=click,
+        content=ft.Icon(ft.Icons.TOUCH_APP, size=70, color=ft.Colors.WHITE),
+    )
+
+    mouse_button = ft.Button(
+        f"Купить за {state['mouse_price']}",
+        bgcolor=ft.Colors.BLUE_900,
+        color=ft.Colors.WHITE,
+        on_click=buy_m,
+    )
+    golden_button = ft.Button(
+        f"Купить за {state['golden_price']}",
+        bgcolor=ft.Colors.BLUE_900,
+        color=ft.Colors.WHITE,
+        on_click=buy_g,
+    )
+    auto_button = ft.Button(
+        f"Купить за {state['auto_price']}",
+        bgcolor=ft.Colors.BLUE_900,
+        color=ft.Colors.WHITE,
+        on_click=buy_a,
+    )
+
+    def make_card(icon, title, subtitle, button):
+        return ft.Container(
+            width=520,
+            height=65,
+            padding=8,
+            border_radius=10,
+            bgcolor=ft.Colors.GREY_200,
+            content=ft.Row(
+                [
+                    ft.Icon(icon, size=28, color=ft.Colors.BLUE_900),
+                    ft.Column(
+                        [
+                            ft.Text(title, size=15, weight=ft.FontWeight.BOLD, color=ft.Colors.BLACK),
+                            ft.Text(subtitle, size=13, color=ft.Colors.BLACK_87),
+                        ],
+                        expand=True,
+                        spacing=0,
+                    ),
+                    button,
+                ]
+            ),
+        )
+
+    mouse_card = make_card(ft.Icons.MOUSE, "Улучшенная мышка", "+1 к клику", mouse_button)
+    golden_card = make_card(ft.Icons.AUTO_AWESOME, "Золотая мышка", "+5 к клику", golden_button)
+    auto_card = make_card(ft.Icons.SMART_TOY, "Автокликер", "+1 очко в секунду", auto_button)
+
+    page.add(
+        ft.Text("Кликер", size=28, weight=ft.FontWeight.BOLD),
+        points_text,
+        power_text,
+        auto_text,
+        click_button,
+        ft.Text("Улучшения", size=20, weight=ft.FontWeight.BOLD),
+        mouse_card,
+        golden_card,
+        auto_card,
+    )
+    refresh()
+
+    # Запускаем фоновую задачу один раз, после page.add
+    page.run_task(autoclicker)
+
+
+ft.run(main)
